@@ -2,7 +2,8 @@ import os
 import logging
 import pathlib
 import json
-from fastapi import FastAPI, Form, HTTPException
+import hashlib
+from fastapi import FastAPI, Form, HTTPException ,UploadFile,File
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -24,21 +25,26 @@ app.add_middleware(
 def root():
     return {"message": "Hello, world!"}
 
-#curl -X POST --url 'http://localhost:9000/items' -d 'name=jacket' -d 'category=fashion'
+# curl -X POST \
+#   --url 'http://localhost:9000/items' \
+#   -F 'name=jacket' \
+#   -F 'category=fashion' \
+#   -F 'image=@images/local_image.jpg'
 @app.post("/items")
-def add_item(name: str = Form(...),category: str = Form(...)):
-    item = {"name": name, "category": category}
+def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = File(...) ):
+    # image.filename: local_image.jpg
+    image = images / image.filename
+    #バイナリで開く
+    f = open(image, "rb")
+    # ハッシュ値を取得
+    image_hash = hashlib.sha256(f.read()).hexdigest()
+    image_filename = str(image_hash) + ".jpg"
+    item = {"name": name, "category": category, "image_filename": image_filename}
 
-    #import json 必要
-    #items.jsonを開く
     f = open('items.json', 'r')
-    #開いたファイルをjsonとして読み込む
     data = json.load(f)
-    #読み込んだjsonにitemを追加
     data["items"].append(item)
-    #書き込むファイルを開く
     f = open('items.json', 'w')
-    #jsonを書き込む(辞書型のデータ)    
     json.dump(data, f)
 
     logger.info(f"Receive item: {name}")
