@@ -57,6 +57,14 @@ def get_items():
     data = json.load(f)
     return data
 
+#curl -X GET 'http://127.0.0.1:9000/items/1'
+@app.get("/items/{item_id}")
+def get_item_by_id(item_id):
+    id = int(item_id)
+    f = open('items.json', 'r')
+    data = json.load(f)
+    return data["items"][id -1]
+
 @app.get("/image/{image_filename}")
 async def get_image(image_filename):
     # Create image path
