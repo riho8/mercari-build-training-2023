@@ -6,6 +6,7 @@ from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+#uvicorn main:app --reload --port 9000
 app = FastAPI()
 logger = logging.getLogger("uvicorn")
 logger.level = logging.INFO
@@ -42,6 +43,13 @@ def add_item(name: str = Form(...),category: str = Form(...)):
 
     logger.info(f"Receive item: {name}")
     return {"message": f"item received: {name}"}
+
+#curl -X GET 'http://127.0.0.1:9000/items'
+@app.get("/items")
+def get_items():
+    f = open('items.json', 'r')
+    data = json.load(f)
+    return data
 
 @app.get("/image/{image_filename}")
 async def get_image(image_filename):
