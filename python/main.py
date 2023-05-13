@@ -34,7 +34,7 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
     with open(image, "rb") as f:
         image_hash = hashlib.sha256(f.read()).hexdigest()
     image_name = str(image_hash) + ".jpg"
-    #データベース
+    #データベース(check_same_thread=Falseは複数のスレッドからアクセスできるようにする)
     conn = sqlite3.connect('../db/mercari.sqlite3', check_same_thread=False)
     c = conn.cursor()
     data = c.execute("SELECT * FROM category WHERE name = ?", (category,)).fetchall()
