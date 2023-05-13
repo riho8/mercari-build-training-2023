@@ -68,6 +68,16 @@ def get_item_by_id(item_id: int):
         data = json.load(f)
     return data["items"][id -1]
 
+#curl -X GET 'http://127.0.0.1:9000/search?keyword=jacket'
+@app.get("/search")
+def search_item(keyword: str):
+    conn = sqlite3.connect('../db/mercari.sqlite3', check_same_thread=False)
+    c = conn.cursor()
+    c.execute("SELECT * FROM items WHERE name LIKE ?", ('%' + keyword + '%',))
+    data = c.fetchall()
+    conn.close()
+    return data
+
 @app.get("/image/{image_filename}")
 async def get_image(image_filename):
     # Create image path
