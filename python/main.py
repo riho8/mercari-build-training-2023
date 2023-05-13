@@ -35,17 +35,17 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
     # image.filename: local_image.jpg
     image = images / image.filename
     #バイナリで開く
-    f = open(image, "rb")
-    # ハッシュ値を取得
-    image_hash = hashlib.sha256(f.read()).hexdigest()
+    with open(image, "rb") as f:
+        # ハッシュ値を取得
+        image_hash = hashlib.sha256(f.read()).hexdigest()
     image_filename = str(image_hash) + ".jpg"
     item = {"name": name, "category": category, "image_filename": image_filename}
 
-    f = open('items.json', 'r')
-    data = json.load(f)
+    with open('items.json', 'r') as f:
+        data = json.load(f)
     data["items"].append(item)
-    f = open('items.json', 'w')
-    json.dump(data, f)
+    with open('items.json', 'w') as f:
+        json.dump(data, f)
 
     logger.info(f"Receive item: {name}")
     return {"message": f"item received: {name}"}
@@ -53,16 +53,17 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
 #curl -X GET 'http://127.0.0.1:9000/items'
 @app.get("/items")
 def get_items():
-    f = open('items.json', 'r')
-    data = json.load(f)
+    with open('items.json', 'r') as f:
+        data = json.load(f)
     return data
 
 #curl -X GET 'http://127.0.0.1:9000/items/1'
 @app.get("/items/{item_id}")
-def get_item_by_id(item_id):
-    id = int(item_id)
-    f = open('items.json', 'r')
-    data = json.load(f)
+#item_idはint型であることを明示（それ以外クライアントにエラー出す）
+def get_item_by_id(item_id: int):
+    id = item_id
+    with open('items.json', 'r') as f:
+        data = json.load(f)
     return data["items"][id -1]
 
 @app.get("/image/{image_filename}")
