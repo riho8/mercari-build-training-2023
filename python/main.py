@@ -3,6 +3,7 @@ import logging
 import pathlib
 import json
 import hashlib
+from PIL import Image
 from fastapi import FastAPI, Form, HTTPException ,UploadFile,File
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -39,6 +40,9 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
         # ハッシュ値を取得
         image_hash = hashlib.sha256(f.read()).hexdigest()
     image_filename = str(image_hash) + ".jpg"
+    #画像を保存
+    with Image.open(image) as im:
+        im.save(images/image_filename)
     item = {"name": name, "category": category, "image_filename": image_filename}
 
     with open('items.json', 'r') as f:
