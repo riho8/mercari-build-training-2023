@@ -29,20 +29,22 @@ def root():
 # curl -X POST --url 'http://localhost:9000/items' -F 'name=jacket' -F 'category=fashion' -F 'image=@images/local_image.jpg'
 @app.post("/items")
 def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = File(...) ):
+    #ハッシュ化
     image = images / image.filename
     with open(image, "rb") as f:
         image_hash = hashlib.sha256(f.read()).hexdigest()
     image_name = str(image_hash) + ".jpg"
-
-    #データベースに接続
+    #データベース
     conn = sqlite3.connect('../db/mercari.sqlite3', check_same_thread=False)
-    #カーソルを取得
     c = conn.cursor()
-    #データを追加
-    c.execute("INSERT INTO items (name, category, image_name) VALUES (?, ?, ?)", (name, category, image_name))
-    #変更を反映するために必要
+    data = c.execute("SELECT * FROM category WHERE name = ?", (category,)).fetchall()
+    #categoryテーブルになければ追加
+    if(len(data) == 0):
+        c.execute("INSERT INTO category (name) VALUES (?)", (category,))
+    #fetchone()は実行されたSQL文の結果から1行を取得
+    category_id = c.execute("SELECT id FROM category WHERE name = ?", (category,)).fetchone()[0]
+    c.execute("INSERT INTO items (name, category_id, image_name) VALUES (?, ?, ?)", (name, category_id, image_name))
     conn.commit()
-    #データベースとの接続を切る
     conn.close()
     logger.info(f"Receive item: {name}")
     return {"message": f"item received: {name}"}
@@ -50,12 +52,9 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
 #curl -X GET 'http://127.0.0.1:9000/items'
 @app.get("/items")
 def get_items():
-    #データベースに接続
     conn = sqlite3.connect('../db/mercari.sqlite3', check_same_thread=False)
-    #カーソルを取得
     c = conn.cursor()
-    c.execute("SELECT * FROM items")
-    #データを一括で取り出す
+    c.execute("SELECT items.id, items.name, category.name, items.image_name FROM items inner join category on items.category_id = category.id")
     data = c.fetchall()
     conn.close()
     return data
