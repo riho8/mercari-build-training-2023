@@ -3,6 +3,7 @@ import logging
 import pathlib
 import json
 import hashlib
+import sqlite3
 from fastapi import FastAPI, Form, HTTPException ,UploadFile,File
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,41 +26,42 @@ app.add_middleware(
 def root():
     return {"message": "Hello, world!"}
 
-# curl -X POST \
-#   --url 'http://localhost:9000/items' \
-#   -F 'name=jacket' \
-#   -F 'category=fashion' \
-#   -F 'image=@images/local_image.jpg'
+# curl -X POST --url 'http://localhost:9000/items' -F 'name=jacket' -F 'category=fashion' -F 'image=@images/local_image.jpg'
 @app.post("/items")
 def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = File(...) ):
-    # image.filename: local_image.jpg
     image = images / image.filename
-    #バイナリで開く
     with open(image, "rb") as f:
-        # ハッシュ値を取得
         image_hash = hashlib.sha256(f.read()).hexdigest()
-    image_filename = str(image_hash) + ".jpg"
-    item = {"name": name, "category": category, "image_filename": image_filename}
+    image_name = str(image_hash) + ".jpg"
 
-    with open('items.json', 'r') as f:
-        data = json.load(f)
-    data["items"].append(item)
-    with open('items.json', 'w') as f:
-        json.dump(data, f)
-
+    #データベースに接続
+    conn = sqlite3.connect('../db/mercari.sqlite3', check_same_thread=False)
+    #カーソルを取得
+    c = conn.cursor()
+    #データを追加
+    c.execute("INSERT INTO items (name, category, image_name) VALUES (?, ?, ?)", (name, category, image_name))
+    #変更を反映するために必要
+    conn.commit()
+    #データベースとの接続を切る
+    conn.close()
     logger.info(f"Receive item: {name}")
     return {"message": f"item received: {name}"}
 
 #curl -X GET 'http://127.0.0.1:9000/items'
 @app.get("/items")
 def get_items():
-    with open('items.json', 'r') as f:
-        data = json.load(f)
+    #データベースに接続
+    conn = sqlite3.connect('../db/mercari.sqlite3', check_same_thread=False)
+    #カーソルを取得
+    c = conn.cursor()
+    c.execute("SELECT * FROM items")
+    #データを一括で取り出す
+    data = c.fetchall()
+    conn.close()
     return data
 
 #curl -X GET 'http://127.0.0.1:9000/items/1'
 @app.get("/items/{item_id}")
-#item_idはint型であることを明示（それ以外クライアントにエラー出す）
 def get_item_by_id(item_id: int):
     id = item_id
     with open('items.json', 'r') as f:
