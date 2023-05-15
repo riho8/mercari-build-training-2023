@@ -1,1 +1,2 @@
 CREATE TABLE items (id int primary key autoincrement, name string, category string, image_name string);
+CREATE TABLE category (id integer primary key autoincrement,name string);
