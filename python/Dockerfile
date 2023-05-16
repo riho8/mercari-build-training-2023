@@ -1,8 +1,6 @@
-FROM alpine
+FROM python:3.11.3-alpine
 
 RUN addgroup -S mercari && adduser -S trainee -G mercari
-#alpineからpython3とpip3をインストールして、バージョンを確認する
-RUN apk update && apk add --no-cache python3 py3-pip && python3 --version && pip3 --version
 # RUN chown -R trainee:mercari /path/to/db
 
 WORKDIR /app
