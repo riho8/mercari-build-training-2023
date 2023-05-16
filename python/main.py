@@ -57,7 +57,8 @@ def get_items():
     conn = sqlite3.connect(database, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
-    c.execute("SELECT items.id, items.name, category.name, items.image_filename FROM items inner join category on items.category_id = category.id")
+    #fetchall()を使うと、nameが重複しているためcategory.nameが取得できない->名前を変更する
+    c.execute("SELECT items.id, items.name, category.name as category, items.image_filename FROM items inner join category on items.category_id = category.id")
     data = c.fetchall()
     ans = {"items": data}
     conn.close()
