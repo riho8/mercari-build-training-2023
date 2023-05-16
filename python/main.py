@@ -22,6 +22,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+database = "../db/mercari.sqlite3"
+
 @app.get("/")
 def root():
     return {"message": "Hello, world!"}
@@ -35,7 +37,7 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
         image_hash = hashlib.sha256(f.read()).hexdigest()
     image_filename = str(image_hash) + ".jpg"
     #データベース(check_same_thread=Falseは複数のスレッドからアクセスできるようにする)
-    conn = sqlite3.connect('../db/mercari.sqlite3', check_same_thread=False)
+    conn = sqlite3.connect(database, check_same_thread=False)
     c = conn.cursor()
     data = c.execute("SELECT * FROM category WHERE name = ?", (category,)).fetchall()
     #categoryテーブルになければ追加
@@ -52,7 +54,7 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
 #curl -X GET 'http://127.0.0.1:9000/items'
 @app.get("/items")
 def get_items():
-    conn = sqlite3.connect('../db/mercari.sqlite3', check_same_thread=False)
+    conn = sqlite3.connect(database, check_same_thread=False)
     c = conn.cursor()
     c.execute("SELECT items.id, items.name, category.name, items.image_filename FROM items inner join category on items.category_id = category.id")
     data = c.fetchall()
@@ -70,7 +72,7 @@ def get_item_by_id(item_id: int):
 #curl -X GET 'http://127.0.0.1:9000/search?keyword=jacket'
 @app.get("/search")
 def search_item(keyword: str):
-    conn = sqlite3.connect('../db/mercari.sqlite3', check_same_thread=False)
+    conn = sqlite3.connect(database, check_same_thread=False)
     c = conn.cursor()
     c.execute("SELECT * FROM items WHERE name LIKE ?", ('%' + keyword + '%',))
     data = c.fetchall()
