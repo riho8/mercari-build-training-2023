@@ -55,11 +55,13 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
 @app.get("/items")
 def get_items():
     conn = sqlite3.connect(database, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
     c = conn.cursor()
     c.execute("SELECT items.id, items.name, category.name, items.image_filename FROM items inner join category on items.category_id = category.id")
     data = c.fetchall()
+    ans = {"items": data}
     conn.close()
-    return data
+    return ans
 
 #curl -X GET 'http://127.0.0.1:9000/items/1'
 @app.get("/items/{item_id}")
@@ -73,11 +75,13 @@ def get_item_by_id(item_id: int):
 @app.get("/search")
 def search_item(keyword: str):
     conn = sqlite3.connect(database, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
     c = conn.cursor()
     c.execute("SELECT * FROM items WHERE name LIKE ?", ('%' + keyword + '%',))
     data = c.fetchall()
+    ans = {"items": data}
     conn.close()
-    return data
+    return ans
 
 @app.get("/image/{image_filename}")
 async def get_image(image_filename):
