@@ -78,7 +78,7 @@ def search_item(keyword: str):
     conn = sqlite3.connect(database, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
-    c.execute("SELECT * FROM items WHERE name LIKE ?", ('%' + keyword + '%',))
+    c.execute("SELECT items.id, items.name, category.name as category, items.image_filename FROM items inner join category on items.category_id = category.id WHERE items.name LIKE ?", ('%' + keyword + '%',))
     data = c.fetchall()
     ans = {"items": data}
     conn.close()
