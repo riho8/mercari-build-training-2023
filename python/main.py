@@ -33,7 +33,7 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
     image = images / image.filename
     with open(image, "rb") as f:
         image_hash = hashlib.sha256(f.read()).hexdigest()
-    image_name = str(image_hash) + ".jpg"
+    image_filename = str(image_hash) + ".jpg"
     #データベース(check_same_thread=Falseは複数のスレッドからアクセスできるようにする)
     conn = sqlite3.connect('../db/mercari.sqlite3', check_same_thread=False)
     c = conn.cursor()
@@ -43,7 +43,7 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
         c.execute("INSERT INTO category (name) VALUES (?)", (category,))
     #fetchone()は実行されたSQL文の結果から1行を取得
     category_id = c.execute("SELECT id FROM category WHERE name = ?", (category,)).fetchone()[0]
-    c.execute("INSERT INTO items (name, category_id, image_name) VALUES (?, ?, ?)", (name, category_id, image_name))
+    c.execute("INSERT INTO items (name, category_id, image_filename) VALUES (?, ?, ?)", (name, category_id, image_filename))
     conn.commit()
     conn.close()
     logger.info(f"Receive item: {name}")
@@ -54,7 +54,7 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
 def get_items():
     conn = sqlite3.connect('../db/mercari.sqlite3', check_same_thread=False)
     c = conn.cursor()
-    c.execute("SELECT items.id, items.name, category.name, items.image_name FROM items inner join category on items.category_id = category.id")
+    c.execute("SELECT items.id, items.name, category.name, items.image_filename FROM items inner join category on items.category_id = category.id")
     data = c.fetchall()
     conn.close()
     return data
