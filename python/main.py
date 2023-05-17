@@ -4,6 +4,7 @@ import pathlib
 import json
 import hashlib
 import sqlite3
+from PIL import Image
 from fastapi import FastAPI, Form, HTTPException ,UploadFile,File
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +23,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+database = "../db/mercari.sqlite3"
+
 @app.get("/")
 def root():
     return {"message": "Hello, world!"}
@@ -33,9 +36,12 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
     image = images / image.filename
     with open(image, "rb") as f:
         image_hash = hashlib.sha256(f.read()).hexdigest()
-    image_name = str(image_hash) + ".jpg"
+    image_filename = str(image_hash) + ".jpg"
+    #画像を保存
+    with Image.open(image) as im:
+        im.save(images/image_filename)
     #データベース(check_same_thread=Falseは複数のスレッドからアクセスできるようにする)
-    conn = sqlite3.connect('../db/mercari.sqlite3', check_same_thread=False)
+    conn = sqlite3.connect(database, check_same_thread=False)
     c = conn.cursor()
     data = c.execute("SELECT * FROM category WHERE name = ?", (category,)).fetchall()
     #categoryテーブルになければ追加
@@ -43,7 +49,7 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
         c.execute("INSERT INTO category (name) VALUES (?)", (category,))
     #fetchone()は実行されたSQL文の結果から1行を取得
     category_id = c.execute("SELECT id FROM category WHERE name = ?", (category,)).fetchone()[0]
-    c.execute("INSERT INTO items (name, category_id, image_name) VALUES (?, ?, ?)", (name, category_id, image_name))
+    c.execute("INSERT INTO items (name, category_id, image_filename) VALUES (?, ?, ?)", (name, category_id, image_filename))
     conn.commit()
     conn.close()
     logger.info(f"Receive item: {name}")
@@ -52,12 +58,15 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
 #curl -X GET 'http://127.0.0.1:9000/items'
 @app.get("/items")
 def get_items():
-    conn = sqlite3.connect('../db/mercari.sqlite3', check_same_thread=False)
+    conn = sqlite3.connect(database, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
     c = conn.cursor()
-    c.execute("SELECT items.id, items.name, category.name, items.image_name FROM items inner join category on items.category_id = category.id")
+    #fetchall()を使うと、nameが重複しているためcategory.nameが取得できない->名前を変更する
+    c.execute("SELECT items.id, items.name, category.name as category, items.image_filename FROM items inner join category on items.category_id = category.id")
     data = c.fetchall()
+    ans = {"items": data}
     conn.close()
-    return data
+    return ans
 
 #curl -X GET 'http://127.0.0.1:9000/items/1'
 @app.get("/items/{item_id}")
@@ -70,12 +79,14 @@ def get_item_by_id(item_id: int):
 #curl -X GET 'http://127.0.0.1:9000/search?keyword=jacket'
 @app.get("/search")
 def search_item(keyword: str):
-    conn = sqlite3.connect('../db/mercari.sqlite3', check_same_thread=False)
+    conn = sqlite3.connect(database, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
     c = conn.cursor()
-    c.execute("SELECT * FROM items WHERE name LIKE ?", ('%' + keyword + '%',))
+    c.execute("SELECT items.id, items.name, category.name as category, items.image_filename FROM items inner join category on items.category_id = category.id WHERE items.name LIKE ?", ('%' + keyword + '%',))
     data = c.fetchall()
+    ans = {"items": data}
     conn.close()
-    return data
+    return ans
 
 @app.get("/image/{image_filename}")
 async def get_image(image_filename):
