@@ -3,6 +3,7 @@ import logging
 import pathlib
 import json
 import hashlib
+import sqlite3
 from PIL import Image
 from fastapi import FastAPI, Form, HTTPException ,UploadFile,File
 from fastapi.responses import FileResponse
@@ -22,53 +23,70 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+database = "../db/mercari.sqlite3"
+
 @app.get("/")
 def root():
     return {"message": "Hello, world!"}
 
-# curl -X POST \
-#   --url 'http://localhost:9000/items' \
-#   -F 'name=jacket' \
-#   -F 'category=fashion' \
-#   -F 'image=@images/local_image.jpg'
+# curl -X POST --url 'http://localhost:9000/items' -F 'name=jacket' -F 'category=fashion' -F 'image=@images/local_image.jpg'
 @app.post("/items")
 def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = File(...) ):
-    # image.filename: local_image.jpg
+    #ハッシュ化
     image = images / image.filename
-    #バイナリで開く
     with open(image, "rb") as f:
-        # ハッシュ値を取得
         image_hash = hashlib.sha256(f.read()).hexdigest()
     image_filename = str(image_hash) + ".jpg"
     #画像を保存
     with Image.open(image) as im:
         im.save(images/image_filename)
-    item = {"name": name, "category": category, "image_filename": image_filename}
-
-    with open('items.json', 'r') as f:
-        data = json.load(f)
-    data["items"].append(item)
-    with open('items.json', 'w') as f:
-        json.dump(data, f)
-
+    #データベース(check_same_thread=Falseは複数のスレッドからアクセスできるようにする)
+    conn = sqlite3.connect(database, check_same_thread=False)
+    c = conn.cursor()
+    data = c.execute("SELECT * FROM category WHERE name = ?", (category,)).fetchall()
+    #categoryテーブルになければ追加
+    if(len(data) == 0):
+        c.execute("INSERT INTO category (name) VALUES (?)", (category,))
+    #fetchone()は実行されたSQL文の結果から1行を取得
+    category_id = c.execute("SELECT id FROM category WHERE name = ?", (category,)).fetchone()[0]
+    c.execute("INSERT INTO items (name, category_id, image_filename) VALUES (?, ?, ?)", (name, category_id, image_filename))
+    conn.commit()
+    conn.close()
     logger.info(f"Receive item: {name}")
     return {"message": f"item received: {name}"}
 
 #curl -X GET 'http://127.0.0.1:9000/items'
 @app.get("/items")
 def get_items():
-    with open('items.json', 'r') as f:
-        data = json.load(f)
-    return data
+    conn = sqlite3.connect(database, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    #fetchall()を使うと、nameが重複しているためcategory.nameが取得できない->名前を変更する
+    c.execute("SELECT items.id, items.name, category.name as category, items.image_filename FROM items inner join category on items.category_id = category.id")
+    data = c.fetchall()
+    ans = {"items": data}
+    conn.close()
+    return ans
 
 #curl -X GET 'http://127.0.0.1:9000/items/1'
 @app.get("/items/{item_id}")
-#item_idはint型であることを明示（それ以外クライアントにエラー出す）
 def get_item_by_id(item_id: int):
     id = item_id
     with open('items.json', 'r') as f:
         data = json.load(f)
     return data["items"][id -1]
+
+#curl -X GET 'http://127.0.0.1:9000/search?keyword=jacket'
+@app.get("/search")
+def search_item(keyword: str):
+    conn = sqlite3.connect(database, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT items.id, items.name, category.name as category, items.image_filename FROM items inner join category on items.category_id = category.id WHERE items.name LIKE ?", ('%' + keyword + '%',))
+    data = c.fetchall()
+    ans = {"items": data}
+    conn.close()
+    return ans
 
 @app.get("/image/{image_filename}")
 async def get_image(image_filename):
