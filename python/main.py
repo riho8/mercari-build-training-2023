@@ -4,6 +4,7 @@ import pathlib
 import json
 import hashlib
 import sqlite3
+from PIL import Image
 from fastapi import FastAPI, Form, HTTPException ,UploadFile,File
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,6 +37,9 @@ def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = 
     with open(image, "rb") as f:
         image_hash = hashlib.sha256(f.read()).hexdigest()
     image_filename = str(image_hash) + ".jpg"
+    #画像を保存
+    with Image.open(image) as im:
+        im.save(images/image_filename)
     #データベース(check_same_thread=Falseは複数のスレッドからアクセスできるようにする)
     conn = sqlite3.connect(database, check_same_thread=False)
     c = conn.cursor()
