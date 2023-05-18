@@ -5,7 +5,7 @@ RUN addgroup -S mercari && adduser -S trainee -G mercari
 WORKDIR /app
 
 #FastAPIとかインストールする
-COPY python/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 #pythonディレクトリを/appにコピー
