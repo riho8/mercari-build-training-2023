@@ -23,7 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-database = "../db/mercari.sqlite3"
+database = "db/mercari.sqlite3"
 
 @app.get("/")
 def root():
