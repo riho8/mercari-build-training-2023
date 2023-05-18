@@ -9,12 +9,12 @@ COPY python/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 #pythonディレクトリを/appにコピー
-COPY python .
+COPY . .
 #dbディレクトリを/dbにコピー
-COPY ../db /db
+COPY db /db
 
 #Dockerでの権限を設定する
-RUN chown -R trainee:mercari /db && chown -R trainee:mercari images 
+RUN chown -R trainee:mercari db && chown -R trainee:mercari images 
 USER trainee
 
 #サーバーを起動
