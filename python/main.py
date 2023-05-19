@@ -23,13 +23,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-database = "../db/mercari.sqlite3"
+database = "db/mercari.sqlite3"
 
 @app.get("/")
 def root():
     return {"message": "Hello, world!"}
 
 # curl -X POST --url 'http://localhost:9000/items' -F 'name=jacket' -F 'category=fashion' -F 'image=@images/local_image.jpg'
+
 @app.post("/items")
 def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = File(...) ):
     #ハッシュ化
