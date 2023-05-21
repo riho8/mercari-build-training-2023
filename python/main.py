@@ -4,7 +4,6 @@ import pathlib
 import json
 import hashlib
 import sqlite3
-from PIL import Image
 from fastapi import FastAPI, Form, HTTPException ,UploadFile,File
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,15 +31,14 @@ def root():
 # curl -X POST --url 'http://localhost:9000/items' -F 'name=jacket' -F 'category=fashion' -F 'image=@images/local_image.jpg'
 
 @app.post("/items")
-def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = File(...) ):
+async def add_item(name: str = Form(...),category: str = Form(...),image:UploadFile = File(...) ):
     #ハッシュ化
-    image = images / image.filename
-    with open(image, "rb") as f:
-        image_hash = hashlib.sha256(f.read()).hexdigest()
+    image_data = await image.read()
+    image_hash = hashlib.sha256(image_data).hexdigest()
     image_filename = str(image_hash) + ".jpg"
     #画像を保存
-    with Image.open(image) as im:
-        im.save(images/image_filename)
+    with open(images/image_filename, "wb") as f:
+        f.write(image_data)
     #データベース(check_same_thread=Falseは複数のスレッドからアクセスできるようにする)
     conn = sqlite3.connect(database, check_same_thread=False)
     c = conn.cursor()
